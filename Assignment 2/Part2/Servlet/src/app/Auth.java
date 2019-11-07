@@ -2,28 +2,20 @@ package app;
 
 import java.io.IOException;
 import java.io.PrintWriter;
-// import java.security.InvalidKeyException;
-// import java.security.KeyStoreException;
-// import java.security.NoSuchAlgorithmException;
-// import java.security.UnrecoverableEntryException;
-// import java.security.cert.CertificateException;
-// import java.security.spec.InvalidKeySpecException;
-
-// import javax.crypto.BadPaddingException;
-// import javax.crypto.IllegalBlockSizeException;
-// import javax.crypto.NoSuchPaddingException;
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import javax.servlet.http.HttpSession;
 
 @WebServlet("/index.html")
 public class Auth extends HttpServlet {
     private static final long serialVersionUID = 1L;
 
     private boolean isLoggedIn = false;
+    private boolean isLoginError = false;
+    private String user = null;
+    private String unknownUser = null;
 
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
@@ -31,34 +23,21 @@ public class Auth extends HttpServlet {
 
         String userName = request.getParameter("userName");
         String password = request.getParameter("password");
+        String logout = request.getParameter("logout");
 
-        // String message = null;
+        isLoginError = false;
 
-        // GregorianCalendar calendar = new GregorianCalendar();
-
-        // if (calendar.get(GregorianCalendar.AM_PM) == GregorianCalendar.AM) {
-        // message = "Good Morning";
-        // } else {
-        // message = "Good Afternoon";
-        // }
-
-        // response.setContentType("text/html");
-
-        // PrintWriter out = response.getWriter();
-
-        // out.println("<html>");
-        // out.println("<body>");
-
-        if (userName.equals("root") && password.equals("admin")) {
+        if (logout != null && logout.equals("logout")) {
+            isLoggedIn = false;
+            user = null;
+        } else if (userName.equals("root") && password.equals("admin")) {
+            user = userName;
             isLoggedIn = true;
+        } else {
+            unknownUser = userName;
+            isLoginError = true;
         }
         response.sendRedirect("index.html");
-
-        // out.println("<a href='index.html'>Back</a>");
-
-        // out.println("</body>");
-        // out.println("</html>");
-        // out.close();
     }
 
     @Override
@@ -69,19 +48,29 @@ public class Auth extends HttpServlet {
         out.println("<html>");
         out.println("<head>");
         out.println("<title>Login Windows</title>");
+        out.println("<link rel='stylesheet' type='text/css' href='styles.css'/>");
         out.println("</head>");
         out.println("<body>");
         out.println("<h1>Login Form</h1>");
         out.println("<form action='index.html' method='POST'>");
         out.println("<table>");
-        out.println("<tr><td>User Name</td><td><input type='text' size='40' name='userName' ></td></tr>");
-        out.println("<tr><td>Password</td><td><input type='password' size='40' name='password' ></td></tr>");
+        out.println("<tr><td>User Name</td><td><input type='text' size='40' name='userName' required></td></tr>");
+        out.println("<tr><td>Password</td><td><input type='password' size='40' name='password' required></td></tr>");
         out.println("<tr><td></td><td><input type='submit' VALUE='Login'> </td></tr>");
         out.println("</table>");
         out.println("</form>");
+
         if (isLoggedIn) {
-            out.println("<h1>Welcome</h1>");
+            out.println("<h1>Welcome " + user + "</h1>");
+            out.println("<form action='index.html' method='POST'>");
+            out.println("<input type='submit' name='logout' VALUE='logout'>");
+            out.println("</form>");
         }
+
+        if (isLoginError) {
+            out.println("<h1>User " + unknownUser + " with given password is not known!</h1>");
+        }
+
         out.println("</body>");
         out.println("</html>");
 
