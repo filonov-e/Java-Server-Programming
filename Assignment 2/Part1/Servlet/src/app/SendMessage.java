@@ -82,16 +82,11 @@ public class SendMessage extends HttpServlet {
                 for (;;) {
                     messages.add((Message) ois.readObject());
                 }
-            } catch (SocketTimeoutException exc)
-            {
+            } catch (SocketTimeoutException exc) {
                 // timeout
-            }
-            catch (EOFException exc)
-            {
+            } catch (EOFException exc) {
                 // end of stream
-            }
-            catch (IOException exc)
-            {
+            } catch (IOException exc) {
                 exc.printStackTrace(); // for example
             } catch (ClassNotFoundException e) {
                 e.printStackTrace();
@@ -119,7 +114,7 @@ public class SendMessage extends HttpServlet {
             out.println("<title>Forum</title>");
             out.println("<link rel='stylesheet' type='text/css' href='styles.css'/>");
             out.println("</head><body>");
-            out.println("<h1>Post Form</h1>");
+            out.println("<h1>POST</h1>");
             out.println("<form action='index.html' method='POST'>");
             out.println("<table>");
             out.println("<tr>");
@@ -131,25 +126,35 @@ public class SendMessage extends HttpServlet {
             out.println("<td><textarea size='40' name='message'></textarea></td>");
             out.println("</tr>");
             out.println("<tr>");
-            out.println("<td></td>");
+            out.println("<td colspan='2'>");
+            out.println("<table>");
             out.println("<tr>");
             for (String sport : sports) {
                 out.println("<td><input type='CHECKBOX' name='sports' value='" + sport.toLowerCase() + "'>" + sport
                         + "</td>");
             }
             out.println("</tr>");
+            out.println("</table>");
+            out.println("</td>");
+            out.println("</tr>");
+            out.println("<tr>");
+            out.println("<td colspan='2'>");
+            out.println("<table>");
             out.println("<tr>");
             for (String view : views) {
                 out.println(
                         "<td><input type='CHECKBOX' name='views' value='" + view.toLowerCase() + "'>" + view + "</td>");
             }
             out.println("</tr>");
+            out.println("</table>");
+            out.println("</td>");
+            out.println("</tr>");
             out.println("<td><input type='submit' name='submit' VALUE='Send'> </td>");
             out.println("</tr>");
             out.println("</table>");
             out.println("</form>");
 
-            out.println("<h1>Find Form</h1>");
+            out.println("<h1>GET</h1>");
             out.println("<form action='index.html' method='GET'>");
             out.println("<table>");
             out.println("<tr>");
@@ -158,7 +163,7 @@ public class SendMessage extends HttpServlet {
             out.println("</tr>");
             out.println("<tr>");
             out.println("<td>Date</td>");
-            out.println("<td><input type='text' size='40' name='date'></td>");
+            out.println("<td><input type='date' size='40' name='date'></td>");
             out.println("</tr>");
             out.println("<tr>");
             out.println("<td></td>");
@@ -173,7 +178,7 @@ public class SendMessage extends HttpServlet {
             for (Message messageItem : messages) {
                 if (date != null) {
                     try {
-                        SimpleDateFormat datePrecisionformatter = new SimpleDateFormat("dd/MM/yyyy");
+                        SimpleDateFormat datePrecisionformatter = new SimpleDateFormat("yyyy-MM-dd");
                         Calendar date1 = Calendar.getInstance();
                         Calendar date2 = Calendar.getInstance();
                         date1.setTime(messageItem.getDate());
