@@ -1,28 +1,28 @@
 package app;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.PrintWriter;
-import java.text.SimpleDateFormat;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import javax.servlet.ServletException;
-import javax.servlet.annotation.MultipartConfig;
 import javax.servlet.annotation.WebInitParam;
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import javax.servlet.http.Part;
 
 @WebServlet(name = "FileUploader", urlPatterns = { "/index.html" }, initParams = {
 		@WebInitParam(name = "upload_path", value = "upload/public/files/") })
-@MultipartConfig(fileSizeThreshold = 1024 * 1024 * 10, // 10 MB
-		maxFileSize = 1024 * 1024 * 50, // 50 MB
-		maxRequestSize = 1024 * 1024 * 100) // 100 MB
 public class FileUploader extends HttpServlet {
 
 	private static final long serialVersionUID = 205242440643911308L;
+	private static final int BUFFER_SIZE = 4096;
 
 	String uploadFilePath;
+	String error = "";
 
 	public void init() {
 		uploadFilePath = this.getServletContext().getRealPath(getServletConfig().getInitParameter("upload_path"))
@@ -54,13 +54,13 @@ public class FileUploader extends HttpServlet {
 		stringBuilder.append("<body>\r\n");
 		stringBuilder.append("<h1>IMAGE GALLERY</h1>");
 		stringBuilder
-				.append("<form action=\"index.html\" method=\"post\" enctype=\"multipart/form-data\">\r\n");
+				.append("<form action=\"index.html\" method=\"post\">\r\n");
 		stringBuilder.append("<table>\r\n");
 		stringBuilder.append(
-				"<tr><th>New file name</th><th><input type=\"text\" name=\"newFileName\" placeholder=\"New name\"></th></tr>\r\n");
+				"<tr><th>New file name</th><th><input type=\"text\" name=\"newFileName\" placeholder=\"New name\" required></th></tr>\r\n");
 		stringBuilder.append(
-				"<tr><th> Select File to Upload</th><th><input type=\"file\" name=\"fileName\"></th></tr>\r\n");
-		stringBuilder.append("<tr><th></th><th><input type=\"submit\" value=\"Upload\"></th></tr>\r\n");
+				"<tr><th> Link to file</th><th><input type=\"text\" name=\"linkToFile\" placeholder=\"Link to file\" required></th></tr>\r\n");
+		stringBuilder.append("<tr><th></th><th><input type=\"submit\" value=\"Download\"></th></tr>\r\n");
 		stringBuilder.append("</table>\r\n");
 		stringBuilder.append("</form>\r\n");
 		
@@ -77,77 +77,70 @@ public class FileUploader extends HttpServlet {
 
 	protected void doPost(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
-
-		String fileName = null;
-		File fileObj = null;
-
-		String newFileName = request.getParameter("newFileName");
-		StringBuilder feedback = new StringBuilder();
-
-		for (Part part : request.getParts()) {
-			fileName = getFileName(part);
-
-			if (!fileName.equals("")) {
-				fileObj = new File(fileName);
-				fileName = fileObj.getName();
-
-				fileName = newFileName.length() == 0 ? fileName : (newFileName + "." + getFileExtension(fileName));
-
-				fileObj = new File(uploadFilePath + fileName);
-
-				part.write(fileObj.getAbsolutePath());
-
-				if (newFileName.length() > 0) {
-					feedback.append("File has been uploaded with name:  " + fileName + "<br><ul>");
-				} else {
-					feedback.append("File has been uploaded with original name: " + fileName + "<br><ul>");	
-				}
-							
-				feedback.append("<li>" + fileObj.getAbsolutePath() + "<br><img src='"
-						+ getServletConfig().getInitParameter("upload_path") + File.separator + fileName
-						+ "' width='200' height='200'></li>");
-			}
-
-		}
-
-		feedback.append("</ul>");
-
-		PrintWriter out = response.getWriter();
-		out.println("<html><head><title>" + "Response of " + this.getServletConfig().getInitParameter("urlPatterns")
-				+ "</title></head><body><h1>Summary</h1>");
-
-		out.println(feedback.toString());
-		out.println("<p style='text-align: center;'><a href='index.html'>Main Page</a></p>");
-
-		out.println("</body></html>");
-
-		out.close();
-	}
-
-	private String getFileName(Part part) {
-
-		String contentDisp = part.getHeader("content-disposition");
-
-		if (contentDisp != null) {
-
-			String[] tokens = contentDisp.split(";");
-
-			for (String token : tokens) {
-				if (token.trim().startsWith("filename")) {
-					return new File(token.split("=")[1].replace('\\', '/')).getName().replace("\"", "");
-				}
-			}
-		}
-
-		return "";
+		String fileURL = request.getParameter("linkToFile");
+		URL url = new URL(fileURL);
+        HttpURLConnection httpConn = (HttpURLConnection) url.openConnection();
+        int responseCode = httpConn.getResponseCode();
+ 
+        if (responseCode == HttpURLConnection.HTTP_OK) {
+        	String newFileName = request.getParameter("newFileName");
+        	InputStream inputStream = httpConn.getInputStream();
+        	
+            String disposition = httpConn.getHeaderField("Content-Disposition");
+            String contentType = httpConn.getContentType();
+            int contentLength = httpConn.getContentLength();
+ 
+            System.out.println("Content-Type = " + contentType);
+            System.out.println("Content-Disposition = " + disposition);
+            System.out.println("Content-Length = " + contentLength);
+            System.out.println("fileName = " + newFileName);
+            
+            String fileExt = contentType.substring(contentType.indexOf('/') + 1);
+            
+            String saveFilePath = uploadFilePath + File.separator + newFileName + '.' + fileExt;
+             
+            FileOutputStream outputStream = new FileOutputStream(saveFilePath);
+ 
+            int bytesRead = -1;
+            byte[] buffer = new byte[BUFFER_SIZE];
+            while ((bytesRead = inputStream.read(buffer)) != -1) {
+                outputStream.write(buffer, 0, bytesRead);
+            }
+ 
+            outputStream.close();
+            inputStream.close();
+ 
+            System.out.println("File downloaded");
+            response.sendRedirect("index.html");
+        } else {
+        	error = "No file to download. Server replied HTTP code: " + responseCode;
+            System.out.println(error);
+            displayError(request, response);
+        }
+        httpConn.disconnect();
 	}
 	
-	private String getFileExtension(String fileName) {
-		int i = fileName.lastIndexOf('.');
-		if (i > 0) {
-		    return fileName.substring(i+1);
+	private void displayError(HttpServletRequest request, HttpServletResponse response) {
+
+		response.setContentType("text/html");
+
+		try {
+			PrintWriter out = response.getWriter();
+			out.println("<html>");
+			out.println("<head>");
+			out.println("<title>View Resource Servlet Error Message</title>");
+			out.println("</head>");
+			out.println("<body>");
+			out.println("<center>");
+			out.println("<h1>Error</h1>");
+			out.println("<p><b>Error:</b> " + error);
+			out.println("<p><a href='index.html'>Back</a>");
+			out.println("</center>");
+			out.println("</body>");
+			out.println("</html>");
+			out.close();
+		} catch (IOException e) {
+			e.printStackTrace();
 		}
-		
-		return "";
 	}
 }
